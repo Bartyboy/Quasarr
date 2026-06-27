@@ -69,6 +69,18 @@ def _xml_attr(value):
     return sax_utils.quoteattr(str(value or ""))
 
 
+def _release_title_for_client(title, hostname, request_from):
+    client_type = extract_client_type(request_from)
+    if client_type in ["sonarr", "radarr", "lidarr", "magazarr"]:
+        return title
+
+    hostname = str(hostname or "").upper()
+    if not hostname:
+        return title
+
+    return f"[{hostname}] {title}"
+
+
 def setup_arr_routes(app):
     @app.get("/download/")
     @require_api_key
@@ -541,8 +553,11 @@ def setup_arr_routes(app):
                             debug(f"Title missing for release from {source}")
                             continue
 
-                        if extract_client_type(request_from) != "magazarr":
-                            title = f"[{release.get('hostname', '').upper()}] {title}"
+                        title = _release_title_for_client(
+                            title,
+                            release.get("hostname", ""),
+                            request_from,
+                        )
 
                         # Get publication date - sources should provide valid dates
                         pub_date = release.get("date", "").strip()
